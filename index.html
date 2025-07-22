@@ -46,9 +46,14 @@
     <button onclick="resumeSpeech()">▶️ Resume</button>
     <button onclick="clearChat()">🗑️ Clear</button>
     <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
+    
     <select id="voiceSelect">
       <option value="en-IN">English (India)</option>
       <option value="hi-IN">Hindi (India)</option>
+    </select>
+    <select id="voiceGenderSelect">
+      <option value="Female" selected>Female</option>
+      <option value="Male">Male</option>
     </select>
     <select id="roleSelect">
       <option value="Student">Student</option>
@@ -56,12 +61,10 @@
     </select>
   </div>
 
-  <!-- PDF and OCR libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
   <script>
-    // 🔐 Login
     window.onload = function () {
       const user = prompt("Enter User ID:");
       const pass = prompt("Enter Password:");
@@ -79,6 +82,7 @@
     const chatbox = document.getElementById("chatbox");
     const inputField = document.getElementById("textInput");
     const voiceSelect = document.getElementById("voiceSelect");
+    const voiceGenderSelect = document.getElementById("voiceGenderSelect");
     const roleSelect = document.getElementById("roleSelect");
     let currentUtterance = null;
     let lastSpokenText = "";
@@ -129,18 +133,20 @@
 
     function speak(text) {
       if (speechSynthesis.speaking) speechSynthesis.cancel();
-      const voices = speechSynthesis.getVoices().filter(
-        v => v.lang === voiceSelect.value && v.name.toLowerCase().includes("female")
-      );
-      const selectedVoice = voices.length > 0 ? voices[0] : null;
+      const lang = voiceSelect.value;
+      const gender = voiceGenderSelect.value;
 
       currentUtterance = new SpeechSynthesisUtterance(text);
-      currentUtterance.lang = voiceSelect.value;
+      currentUtterance.lang = lang;
 
-      if (selectedVoice) {
-        currentUtterance.voice = selectedVoice;
-      }
+      const voices = speechSynthesis.getVoices().filter(v =>
+        v.lang === lang &&
+        (gender === "Female" ? v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("kendra") || v.name.toLowerCase().includes("rupa") :
+         gender === "Male" ? v.name.toLowerCase().includes("male") || v.name.toLowerCase().includes("matt") || v.name.toLowerCase().includes("bharat") :
+         true)
+      );
 
+      currentUtterance.voice = voices[0] || speechSynthesis.getVoices()[0];
       speechSynthesis.speak(currentUtterance);
     }
 
@@ -206,6 +212,9 @@
         alert("Unsupported file type.");
       }
     }
+
+    // Fix: Load voices before first use
+    window.speechSynthesis.onvoiceschanged = () => {};
   </script>
 </body>
 </html>
