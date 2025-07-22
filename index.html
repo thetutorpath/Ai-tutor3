@@ -31,6 +31,7 @@
     }
     input[type=text], input[type=file] { flex: 1; padding: 8px; }
     button, select { padding: 8px 12px; cursor: pointer; }
+    label { font-size: 14px; }
   </style>
 </head>
 <body>
@@ -46,15 +47,21 @@
     <button onclick="resumeSpeech()">▶️ Resume</button>
     <button onclick="clearChat()">🗑️ Clear</button>
     <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
-    
     <select id="voiceSelect">
       <option value="en-IN">English (India)</option>
       <option value="hi-IN">Hindi (India)</option>
     </select>
-    <select id="voiceGenderSelect">
-      <option value="Female" selected>Female</option>
-      <option value="Male">Male</option>
+    <select id="genderSelect">
+      <option value="female">Female</option>
+      <option value="male">Male</option>
     </select>
+    <label>
+      Speed:
+      <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
+    </label>
+    <label>
+      <input type="checkbox" id="translateToHindi"> Translate to Hindi
+    </label>
     <select id="roleSelect">
       <option value="Student">Student</option>
       <option value="Teacher">Teacher</option>
@@ -82,8 +89,11 @@
     const chatbox = document.getElementById("chatbox");
     const inputField = document.getElementById("textInput");
     const voiceSelect = document.getElementById("voiceSelect");
-    const voiceGenderSelect = document.getElementById("voiceGenderSelect");
     const roleSelect = document.getElementById("roleSelect");
+    const genderSelect = document.getElementById("genderSelect");
+    const speedSlider = document.getElementById("speedSlider");
+    const translateCheckbox = document.getElementById("translateToHindi");
+
     let currentUtterance = null;
     let lastSpokenText = "";
 
@@ -121,8 +131,10 @@
             messages: [{ role: "user", content: prompt }],
           }),
         });
-        const data = await response.json();
-        const reply = data.choices?.[0]?.message?.content || "Sorry, I didn't understand that.";
+        let reply = response.ok ? (await response.json()).choices?.[0]?.message?.content : "Sorry, I didn't understand that.";
+        if (translateCheckbox.checked) {
+          reply = await translateToHindi(reply);
+        }
         thinking.textContent = "Kritika: " + reply;
         lastSpokenText = reply;
         speak(reply);
@@ -131,23 +143,32 @@
       }
     }
 
+    async function translateToHindi(text) {
+      try {
+        const res = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=" + encodeURIComponent(text));
+        const data = await res.json();
+        return data[0].map(d => d[0]).join("");
+      } catch {
+        return text;
+      }
+    }
+
     function speak(text) {
       if (speechSynthesis.speaking) speechSynthesis.cancel();
-      const lang = voiceSelect.value;
-      const gender = voiceGenderSelect.value;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = voiceSelect.value;
+      utterance.rate = parseFloat(speedSlider.value);
 
-      currentUtterance = new SpeechSynthesisUtterance(text);
-      currentUtterance.lang = lang;
+      const voices = speechSynthesis.getVoices();
+      const gender = genderSelect.value;
 
-      const voices = speechSynthesis.getVoices().filter(v =>
-        v.lang === lang &&
-        (gender === "Female" ? v.name.toLowerCase().includes("female") || v.name.toLowerCase().includes("kendra") || v.name.toLowerCase().includes("rupa") :
-         gender === "Male" ? v.name.toLowerCase().includes("male") || v.name.toLowerCase().includes("matt") || v.name.toLowerCase().includes("bharat") :
-         true)
+      const preferredVoice = voices.find(v =>
+        v.lang === voiceSelect.value &&
+        (gender === "female" ? v.name.toLowerCase().includes("female") : v.name.toLowerCase().includes("male"))
       );
-
-      currentUtterance.voice = voices[0] || speechSynthesis.getVoices()[0];
-      speechSynthesis.speak(currentUtterance);
+      utterance.voice = preferredVoice || voices.find(v => v.lang === voiceSelect.value) || voices[0];
+      currentUtterance = utterance;
+      speechSynthesis.speak(utterance);
     }
 
     function startListening() {
@@ -213,8 +234,8 @@
       }
     }
 
-    // Fix: Load voices before first use
-    window.speechSynthesis.onvoiceschanged = () => {};
+    // Fix: Ensure voices are loaded before speaking
+    speechSynthesis.onvoiceschanged = () => {};
   </script>
 </body>
 </html>
