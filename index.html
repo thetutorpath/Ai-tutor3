@@ -2,122 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI English Tutor - Kritika</title>
   <style>
     body {
       font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f4f4f4;
+    }
+    .container {
+      max-width: 900px;
+      margin: 20px auto;
       padding: 20px;
-      background: #f0f4f9;
-      display: none;
-    }
-    h1 { text-align: center; color: #4a4a4a; }
-    #chatbox, #whiteboard {
-      max-width: 700px;
-      margin: auto;
       background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      height: 450px;
-      overflow-y: auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
-    #whiteboard { display: none; position: relative; }
+    textarea, input[type="file"] {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    button {
+      margin: 10px 5px 0 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
     canvas {
       border: 1px solid #ccc;
-      border-radius: 5px;
-      width: 100%;
-      height: 400px;
-      cursor: crosshair;
+      display: block;
+      margin: 20px 0;
     }
-    .message { margin-bottom: 10px; white-space: pre-wrap; }
-    .user { color: #1a73e8; }
-    .bot { color: #34a853; }
-    #inputArea {
-      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
-      max-width: 700px; margin-left: auto; margin-right: auto;
-    }
-    input[type=text], input[type=file] { flex: 1; padding: 8px; }
-    button, select { padding: 8px 12px; cursor: pointer; }
-    label { font-size: 14px; }
+    #whiteboard-section { display: none; }
   </style>
 </head>
 <body>
-  <h1>AI English Tutor - Kritika</h1>
-  <button onclick="toggleMode()" id="modeBtn">Switch to Whiteboard Mode</button>
-  <div id="chatbox"></div>
-  <div id="whiteboard">
-    <canvas id="canvas"></canvas>
-    <button onclick="clearCanvas()">🧹 Clear</button>
+<div class="container">
+  <h2>AI English Tutor - Kritika</h2>
+
+  <label for="voice">Choose Voice:</label>
+  <select id="voice">
+    <option value="hi-IN-Standard-A">Female (Hindi)</option>
+    <option value="hi-IN-Standard-D">Male (Hindi)</option>
+  </select>
+
+  <textarea id="userInput" placeholder="Ask something..."></textarea>
+  <button onclick="handleSubmit()">Submit</button>
+  <button onclick="repeatLast()">🔁 Repeat</button>
+  <button onclick="resumeLast()">▶️ Resume</button>
+  <button onclick="toggleMode()" id="modeButton">Switch to Whiteboard Mode</button>
+
+  <div id="response"></div>
+
+  <div id="whiteboard-section">
+    <canvas id="whiteboard" width="800" height="300"></canvas><br>
+    <button onclick="clearWhiteboard()">Clear</button>
   </div>
+</div>
 
-  <div id="inputArea">
-    <input type="text" id="textInput" placeholder="Type or speak..." />
-    <button onclick="sendMessage()">Send</button>
-    <button onclick="startListening()">🎤</button>
-    <button onclick="repeatLast()">🔁 Repeat</button>
-    <button onclick="pauseSpeech()">⏸️ Pause</button>
-    <button onclick="resumeSpeech()">▶️ Resume</button>
-    <button onclick="clearChat()">🗑️ Clear</button>
-    <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
-    <select id="voiceSelect">
-      <option value="en-IN">English (India)</option>
-      <option value="hi-IN">Hindi (India)</option>
-    </select>
-    <select id="genderSelect">
-      <option value="female">Female</option>
-      <option value="male">Male</option>
-    </select>
-    <label>
-      Speed:
-      <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
-    </label>
-    <label>
-      <input type="checkbox" id="translateToHindi"> Translate to Hindi
-    </label>
-    <select id="roleSelect">
-      <option value="Student">Student</option>
-      <option value="Teacher">Teacher</option>
-    </select>
-  </div>
+<script>
+let lastSpoken = '';
+let currentMode = 'chat';
+const synth = window.speechSynthesis;
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-  <script>
-    let isWhiteboardMode = false;
-    const canvas = document.getElementById("canvas");
-    const ctx = canvas.getContext("2d");
-    let drawing = false;
+function speakText(text) {
+  lastSpoken = text;
+  const voiceChoice = document.getElementById('voice').value;
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'hi-IN';
+  utterance.voice = [...synth.getVoices()].find(v => v.name.includes(voiceChoice.split('-').pop()));
+  utterance.rate = 0.95; // Indian speech pace
+  synth.speak(utterance);
+}
 
-    canvas.width = 700;
-    canvas.height = 400;
+function handleSubmit() {
+  const input = document.getElementById('userInput').value.trim();
+  if (!input) return;
+  document.getElementById('response').innerText = 'Thinking...';
+  fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer YOUR_OPENAI_API_KEY' // Replace with your key
+    },
+    body: JSON.stringify({
+      model: 'gpt-3.5-turbo',
+      messages: [{ role: 'user', content: input }]
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    const reply = data.choices[0].message.content;
+    document.getElementById('response').innerText = reply;
+    speakText(reply);
+    if (currentMode === 'whiteboard') drawOnWhiteboard(reply);
+  });
+}
 
-    canvas.addEventListener("mousedown", () => drawing = true);
-    canvas.addEventListener("mouseup", () => drawing = false);
-    canvas.addEventListener("mouseout", () => drawing = false);
-    canvas.addEventListener("mousemove", draw);
+function repeatLast() {
+  if (lastSpoken) speakText(lastSpoken);
+}
 
-    function draw(e) {
-      if (!drawing) return;
-      ctx.lineWidth = 2;
-      ctx.lineCap = "round";
-      ctx.strokeStyle = "#000";
-      ctx.lineTo(e.offsetX, e.offsetY);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(e.offsetX, e.offsetY);
+function resumeLast() {
+  if (synth.paused) synth.resume();
+}
+
+function toggleMode() {
+  if (currentMode === 'chat') {
+    currentMode = 'whiteboard';
+    document.getElementById('whiteboard-section').style.display = 'block';
+    document.getElementById('modeButton').innerText = 'Switch to Chat Mode';
+  } else {
+    currentMode = 'chat';
+    document.getElementById('whiteboard-section').style.display = 'none';
+    document.getElementById('modeButton').innerText = 'Switch to Whiteboard Mode';
+  }
+}
+
+// WHITEBOARD
+const canvas = document.getElementById('whiteboard');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+canvas.addEventListener('mousedown', () => drawing = true);
+canvas.addEventListener('mouseup', () => drawing = false);
+canvas.addEventListener('mouseout', () => drawing = false);
+canvas.addEventListener('mousemove', draw);
+
+function draw(e) {
+  if (!drawing) return;
+  const rect = canvas.getBoundingClientRect();
+  ctx.fillStyle = 'black';
+  ctx.beginPath();
+  ctx.arc(e.clientX - rect.left, e.clientY - rect.top, 2, 0, 2 * Math.PI);
+  ctx.fill();
+}
+
+function clearWhiteboard() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawOnWhiteboard(text) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '20px Arial';
+  ctx.fillStyle = 'blue';
+  wrapText(text, 10, 30, canvas.width - 20, 24);
+}
+
+function wrapText(text, x, y, maxWidth, lineHeight) {
+  const words = text.split(' ');
+  let line = '';
+  for (let n = 0; n < words.length; n++) {
+    const testLine = line + words[n] + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && n > 0) {
+      ctx.fillText(line, x, y);
+      line = words[n] + ' ';
+      y += lineHeight;
+    } else {
+      line = testLine;
     }
-    function clearCanvas() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    function toggleMode() {
-      isWhiteboardMode = !isWhiteboardMode;
-      document.getElementById("chatbox").style.display = isWhiteboardMode ? "none" : "block";
-      document.getElementById("whiteboard").style.display = isWhiteboardMode ? "block" : "none";
-      document.getElementById("modeBtn").innerText = isWhiteboardMode ? "Switch to Chat Mode" : "Switch to Whiteboard Mode";
-    }
-  </script>
-  <script src="ai-tutor-core.js"></script> <!-- link your JS functionality from original code here -->
+  }
+  ctx.fillText(line, x, y);
+}
+</script>
 </body>
 </html>
