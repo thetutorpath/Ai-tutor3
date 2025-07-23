@@ -2,170 +2,240 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI English Tutor - Kritika</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f4f4f4;
-    }
-    .container {
-      max-width: 900px;
-      margin: 20px auto;
       padding: 20px;
+      background: #f0f4f9;
+      display: none;
+    }
+    h1 { text-align: center; color: #4a4a4a; }
+    #chatbox {
+      max-width: 700px;
+      margin: auto;
       background: #fff;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 15px;
+      border-radius: 8px;
+      height: 450px;
+      overflow-y: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    textarea, input[type="file"] {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 16px;
+    .message { margin-bottom: 10px; white-space: pre-wrap; }
+    .user { color: #1a73e8; }
+    .bot { color: #34a853; }
+    #inputArea {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+      max-width: 700px; margin-left: auto; margin-right: auto;
     }
-    button {
-      margin: 10px 5px 0 0;
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    canvas {
-      border: 1px solid #ccc;
-      display: block;
-      margin: 20px 0;
-    }
-    #whiteboard-section { display: none; }
+    input[type=text], input[type=file] { flex: 1; padding: 8px; }
+    button, select { padding: 8px 12px; cursor: pointer; }
+    label { font-size: 14px; }
   </style>
 </head>
 <body>
-<div class="container">
-  <h2>AI English Tutor - Kritika</h2>
+  <h1>AI English Tutor - Kritika</h1>
+  <div id="chatbox"></div>
 
-  <label for="voice">Choose Voice:</label>
-  <select id="voice">
-    <option value="hi-IN-Standard-A">Female (Hindi)</option>
-    <option value="hi-IN-Standard-D">Male (Hindi)</option>
-  </select>
-
-  <textarea id="userInput" placeholder="Ask something..."></textarea>
-  <button onclick="handleSubmit()">Submit</button>
-  <button onclick="repeatLast()">🔁 Repeat</button>
-  <button onclick="resumeLast()">▶️ Resume</button>
-  <button onclick="toggleMode()" id="modeButton">Switch to Whiteboard Mode</button>
-
-  <div id="response"></div>
-
-  <div id="whiteboard-section">
-    <canvas id="whiteboard" width="800" height="300"></canvas><br>
-    <button onclick="clearWhiteboard()">Clear</button>
+  <div id="inputArea">
+    <input type="text" id="textInput" placeholder="Type or speak..." />
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="startListening()">🎤</button>
+    <button onclick="repeatLast()">🔁 Repeat</button>
+    <button onclick="pauseSpeech()">⏸️ Pause</button>
+    <button onclick="resumeSpeech()">▶️ Resume</button>
+    <button onclick="clearChat()">🗑️ Clear</button>
+    <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
+    <select id="voiceSelect">
+      <option value="en-IN">English (India)</option>
+      <option value="hi-IN">Hindi (India)</option>
+    </select>
+    <select id="genderSelect">
+      <option value="female">Female</option>
+      <option value="male">Male</option>
+    </select>
+    <label>
+      Speed:
+      <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
+    </label>
+    <label>
+      <input type="checkbox" id="translateToHindi"> Translate to Hindi
+    </label>
+    <select id="roleSelect">
+      <option value="Student">Student</option>
+      <option value="Teacher">Teacher</option>
+    </select>
   </div>
-</div>
 
-<script>
-let lastSpoken = '';
-let currentMode = 'chat';
-const synth = window.speechSynthesis;
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 
-function speakText(text) {
-  lastSpoken = text;
-  const voiceChoice = document.getElementById('voice').value;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'hi-IN';
-  utterance.voice = [...synth.getVoices()].find(v => v.name.includes(voiceChoice.split('-').pop()));
-  utterance.rate = 0.95; // Indian speech pace
-  synth.speak(utterance);
-}
+  <script>
+    window.onload = function () {
+      const user = prompt("Enter User ID:");
+      const pass = prompt("Enter Password:");
+      if (user === "demo" && pass === "demo@234") {
+        document.body.style.display = "block";
+        appendMessage("Kritika", "Hi! I'm Kritika, your spoken English tutor.");
+        speak("Hi! I'm Kritika, your spoken English tutor.");
+      } else {
+        alert("Access Denied");
+        document.body.innerHTML = "<h2 style='color:red;text-align:center;'>Unauthorized Access</h2>";
+      }
+    };
 
-function handleSubmit() {
-  const input = document.getElementById('userInput').value.trim();
-  if (!input) return;
-  document.getElementById('response').innerText = 'Thinking...';
-  fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer YOUR_OPENAI_API_KEY' // Replace with your key
-    },
-    body: JSON.stringify({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: input }]
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-    const reply = data.choices[0].message.content;
-    document.getElementById('response').innerText = reply;
-    speakText(reply);
-    if (currentMode === 'whiteboard') drawOnWhiteboard(reply);
-  });
-}
+    const apiKey = "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";
+    const chatbox = document.getElementById("chatbox");
+    const inputField = document.getElementById("textInput");
+    const voiceSelect = document.getElementById("voiceSelect");
+    const roleSelect = document.getElementById("roleSelect");
+    const genderSelect = document.getElementById("genderSelect");
+    const speedSlider = document.getElementById("speedSlider");
+    const translateCheckbox = document.getElementById("translateToHindi");
 
-function repeatLast() {
-  if (lastSpoken) speakText(lastSpoken);
-}
+    let currentUtterance = null;
+    let lastSpokenText = "";
 
-function resumeLast() {
-  if (synth.paused) synth.resume();
-}
-
-function toggleMode() {
-  if (currentMode === 'chat') {
-    currentMode = 'whiteboard';
-    document.getElementById('whiteboard-section').style.display = 'block';
-    document.getElementById('modeButton').innerText = 'Switch to Chat Mode';
-  } else {
-    currentMode = 'chat';
-    document.getElementById('whiteboard-section').style.display = 'none';
-    document.getElementById('modeButton').innerText = 'Switch to Whiteboard Mode';
-  }
-}
-
-// WHITEBOARD
-const canvas = document.getElementById('whiteboard');
-const ctx = canvas.getContext('2d');
-let drawing = false;
-canvas.addEventListener('mousedown', () => drawing = true);
-canvas.addEventListener('mouseup', () => drawing = false);
-canvas.addEventListener('mouseout', () => drawing = false);
-canvas.addEventListener('mousemove', draw);
-
-function draw(e) {
-  if (!drawing) return;
-  const rect = canvas.getBoundingClientRect();
-  ctx.fillStyle = 'black';
-  ctx.beginPath();
-  ctx.arc(e.clientX - rect.left, e.clientY - rect.top, 2, 0, 2 * Math.PI);
-  ctx.fill();
-}
-
-function clearWhiteboard() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawOnWhiteboard(text) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.font = '20px Arial';
-  ctx.fillStyle = 'blue';
-  wrapText(text, 10, 30, canvas.width - 20, 24);
-}
-
-function wrapText(text, x, y, maxWidth, lineHeight) {
-  const words = text.split(' ');
-  let line = '';
-  for (let n = 0; n < words.length; n++) {
-    const testLine = line + words[n] + ' ';
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxWidth && n > 0) {
-      ctx.fillText(line, x, y);
-      line = words[n] + ' ';
-      y += lineHeight;
-    } else {
-      line = testLine;
+    function appendMessage(sender, text) {
+      const msg = document.createElement("div");
+      msg.className = "message " + (sender === "You" ? "user" : "bot");
+      msg.textContent = `${sender}: ${text}`;
+      chatbox.appendChild(msg);
+      chatbox.scrollTop = chatbox.scrollHeight;
     }
-  }
-  ctx.fillText(line, x, y);
-}
-</script>
+
+    async function sendMessage() {
+      const message = inputField.value.trim();
+      if (!message) return;
+      appendMessage("You", message);
+      inputField.value = "";
+      inputField.focus();
+
+      const thinking = document.createElement("div");
+      thinking.className = "message bot";
+      thinking.textContent = "Kritika: ...thinking...";
+      chatbox.appendChild(thinking);
+      chatbox.scrollTop = chatbox.scrollHeight;
+
+      const prompt = `${roleSelect.value}:\n${message}`;
+      try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: "llama3-8b-8192",
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        let reply = response.ok ? (await response.json()).choices?.[0]?.message?.content : "Sorry, I didn't understand that.";
+        if (translateCheckbox.checked) {
+          reply = await translateToHindi(reply);
+        }
+        thinking.textContent = "Kritika: " + reply;
+        lastSpokenText = reply;
+        speak(reply);
+      } catch (err) {
+        thinking.textContent = "Kritika: Network error occurred.";
+      }
+    }
+
+    async function translateToHindi(text) {
+      try {
+        const res = await fetch("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=hi&dt=t&q=" + encodeURIComponent(text));
+        const data = await res.json();
+        return data[0].map(d => d[0]).join("");
+      } catch {
+        return text;
+      }
+    }
+
+    function speak(text) {
+      if (speechSynthesis.speaking) speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = voiceSelect.value;
+      utterance.rate = parseFloat(speedSlider.value);
+
+      const voices = speechSynthesis.getVoices();
+      const gender = genderSelect.value;
+
+      const preferredVoice = voices.find(v =>
+        v.lang === voiceSelect.value &&
+        (gender === "female" ? v.name.toLowerCase().includes("female") : v.name.toLowerCase().includes("male"))
+      );
+      utterance.voice = preferredVoice || voices.find(v => v.lang === voiceSelect.value) || voices[0];
+      currentUtterance = utterance;
+      speechSynthesis.speak(utterance);
+    }
+
+    function startListening() {
+      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+      recognition.lang = voiceSelect.value;
+      recognition.interimResults = false;
+      recognition.onresult = function (event) {
+        inputField.value = event.results[0][0].transcript;
+        sendMessage();
+      };
+      recognition.onerror = function (e) { console.error("Speech error:", e.error); };
+      recognition.start();
+    }
+
+    function pauseSpeech() {
+      if (speechSynthesis.speaking) speechSynthesis.pause();
+    }
+
+    function resumeSpeech() {
+      if (speechSynthesis.paused) speechSynthesis.resume();
+    }
+
+    function repeatLast() {
+      if (lastSpokenText) speak(lastSpokenText);
+    }
+
+    function clearChat() {
+      chatbox.innerHTML = "";
+      appendMessage("Kritika", "Hi! I'm Kritika, your spoken English tutor.");
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      if (file.type === "application/pdf") {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let extracted = "";
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          extracted += text.items.map(item => item.str).join(" ") + "\n";
+        }
+        inputField.value = extracted.slice(0, 1000);
+        sendMessage();
+      } else if (file.type.startsWith("image/")) {
+        reader.onload = async function (e) {
+          const result = await Tesseract.recognize(e.target.result, 'eng');
+          inputField.value = result.data.text.slice(0, 1000);
+          sendMessage();
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type === "text/plain") {
+        reader.onload = function (e) {
+          inputField.value = e.target.result.slice(0, 1000);
+          sendMessage();
+        };
+        reader.readAsText(file);
+      } else {
+        alert("Unsupported file type.");
+      }
+    }
+
+    // Fix: Ensure voices are loaded before speaking
+    speechSynthesis.onvoiceschanged = () => {};
+  </script>
 </body>
 </html>
