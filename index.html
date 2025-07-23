@@ -149,7 +149,7 @@ ${message}`;
       }
     }
 
-    function speak(text) {
+    function speakText(text) {     const utterance = new SpeechSynthesisUtterance(text);     utterance.lang = 'hi-IN'; // Hindi language code      // Force-select a Hindi female voice     const selectedVoice = speechSynthesis.getVoices().find(         (voice) =>             voice.name.includes("Google हिन्दी") ||              (voice.lang === 'hi-IN' && voice.name.toLowerCase().includes('female'))     );      if (selectedVoice) {         utterance.voice = selectedVoice;     } else {         console.warn("Hindi female voice not found. Using default.");     }      utterance.rate = parseFloat(document.getElementById("speedRange").value || 1);     speechSynthesis.speak(utterance); }(text) {
       if (speechSynthesis.speaking) speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = voiceSelect.value;
