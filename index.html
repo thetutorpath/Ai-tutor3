@@ -12,25 +12,9 @@
       display: none;
     }
     h1 { text-align: center; color: #4a4a4a; }
-    .container {
-      display: flex;
-      max-width: 1000px;
-      margin: auto;
-      gap: 20px;
-    }
-    #tutorImage {
-      flex: 1;
-      max-width: 250px;
-    }
-    #tutorImage img {
-      width: 100%;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2);
-    }
-    #chatArea {
-      flex: 2;
-    }
     #chatbox {
+      max-width: 700px;
+      margin: auto;
       background: #fff;
       padding: 15px;
       border-radius: 8px;
@@ -43,6 +27,7 @@
     .bot { color: #34a853; }
     #inputArea {
       display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;
+      max-width: 700px; margin-left: auto; margin-right: auto;
     }
     input[type=text], input[type=file] { flex: 1; padding: 8px; }
     button, select { padding: 8px 12px; cursor: pointer; }
@@ -51,51 +36,41 @@
 </head>
 <body>
   <h1>AI English Tutor - Kritika</h1>
+  <div id="chatbox"></div>
 
-  <div class="container">
-    <!-- Tutor Image -->
-    <div id="tutorImage">
-      <img src="Firefly_lady teacher 48598.jpg" alt="Kritika - AI Tutor">
-    </div>
-
-    <!-- Chat and Inputs -->
-    <div id="chatArea">
-      <div id="chatbox"></div>
-
-      <div id="inputArea">
-        <input type="text" id="textInput" placeholder="Type or speak..." />
-        <button onclick="sendMessage()">Send</button>
-        <button onclick="startListening()">🎤</button>
-        <button onclick="repeatLast()">🔁 Repeat</button>
-        <button onclick="pauseSpeech()">⏸️ Pause</button>
-        <button onclick="resumeSpeech()">▶️ Resume</button>
-        <button onclick="clearChat()">🗑️ Clear</button>
-        <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
-        <select id="voiceSelect">
-          <option value="en-IN">English (India)</option>
-          <option value="hi-IN">Hindi (India)</option>
-        </select>
-        <select id="genderSelect">
-          <option value="female">Female</option>
-          <option value="male">Male</option>
-        </select>
-        <label>Speed:
-          <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
-        </label>
-        <label>
-          <input type="checkbox" id="translateToHindi"> Translate to Hindi
-        </label>
-        <select id="roleSelect">
-          <option value="Student">Student</option>
-          <option value="Teacher">Teacher</option>
-        </select>
-      </div>
-    </div>
+  <div id="inputArea">
+    <input type="text" id="textInput" placeholder="Type or speak..." />
+    <button onclick="sendMessage()">Send</button>
+    <button onclick="startListening()">🎤</button>
+    <button onclick="repeatLast()">🔁 Repeat</button>
+    <button onclick="pauseSpeech()">⏸️ Pause</button>
+    <button onclick="resumeSpeech()">▶️ Resume</button>
+    <button onclick="clearChat()">🗑️ Clear</button>
+    <input type="file" accept=".txt,.pdf,.png,.jpg,.jpeg" onchange="handleFileUpload(event)" />
+    <select id="voiceSelect">
+      <option value="en-IN">English (India)</option>
+      <option value="hi-IN">Hindi (India)</option>
+    </select>
+    <select id="genderSelect">
+      <option value="female">Female</option>
+      <option value="male">Male</option>
+    </select>
+    <label>
+      Speed:
+      <input type="range" id="speedSlider" min="0.5" max="2" step="0.1" value="1">
+    </label>
+    <label>
+      <input type="checkbox" id="translateToHindi"> Translate to Hindi
+    </label>
+    <select id="roleSelect">
+      <option value="Student">Student</option>
+      <option value="Teacher">Teacher</option>
+    </select>
   </div>
 
-  <!-- Scripts -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.14.305/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
   <script>
     window.onload = function () {
       const user = prompt("Enter User ID:");
